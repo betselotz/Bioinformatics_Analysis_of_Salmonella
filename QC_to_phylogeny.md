@@ -504,7 +504,10 @@ nano run_snippy.sh
 #!/bin/bash
 set -euo pipefail
 
-REF="H37Rv.fasta"
+# -----------------------------
+# Configuration
+# -----------------------------
+REF="Salmonella_LT2.fasta"        # Shortened reference name
 FASTP_DIR="fastp_results_min_50"
 OUTDIR="snippy_results"
 THREADS=8
@@ -513,6 +516,9 @@ JOBS=4
 
 mkdir -p "$OUTDIR"
 
+# -----------------------------
+# Function to run Snippy on a sample
+# -----------------------------
 run_snippy_sample() {
     SAMPLE="$1"
     R1="${FASTP_DIR}/${SAMPLE}_1.trim.fastq.gz"
@@ -523,13 +529,25 @@ run_snippy_sample() {
         return
     fi
 
-    echo "Running Snippy on sample: $SAMPLE"
+    # Skip if VCF already exists
+    if [[ -f "${OUTDIR}/${SAMPLE}.vcf" ]]; then
+        echo "ℹ ${SAMPLE} already processed. Skipping."
+        return
+    fi
+
+    echo "🚀 Running Snippy on sample: $SAMPLE"
     TMP_DIR="${OUTDIR}/${SAMPLE}_tmp"
     mkdir -p "$TMP_DIR"
 
-    snippy --cpus "$THREADS" --outdir "$TMP_DIR" --ref "$REF" \
-           --R1 "$R1" --R2 "$R2" --force --bwaopt "-T $BWA_THREADS"
+    snippy --cpus "$THREADS" \
+           --outdir "$TMP_DIR" \
+           --ref "$REF" \
+           --R1 "$R1" \
+           --R2 "$R2" \
+           --force \
+           --bwaopt "-T $BWA_THREADS"
 
+    # Move outputs to main OUTDIR
     if [[ -f "$TMP_DIR/snps.vcf" ]]; then
         mv "$TMP_DIR/snps.vcf" "${OUTDIR}/${SAMPLE}.vcf"
     fi
@@ -549,15 +567,25 @@ run_snippy_sample() {
     [[ -f "${OUTDIR}/${SAMPLE}.vcf" ]] && echo "✅ Full VCF generated for $SAMPLE" || echo "⚠ No VCF produced for $SAMPLE"
 }
 
+# -----------------------------
+# Export variables and function
+# -----------------------------
 export -f run_snippy_sample
 export REF FASTP_DIR OUTDIR THREADS BWA_THREADS
 
+# -----------------------------
+# Run Snippy in parallel
+# -----------------------------
 ls "${FASTP_DIR}"/*_1.trim.fastq.gz \
     | sed 's|.*/||; s/_1\.trim\.fastq\.gz//' \
     | parallel -j "$JOBS" run_snippy_sample {}
 
+# -----------------------------
+# Compare processed samples
+# -----------------------------
 ls "${FASTP_DIR}"/*_1.trim.fastq.gz \
     | sed 's|.*/||; s/_1\.trim\.fastq\.gz//' | sort > fastq_samples.txt
+
 ls "${OUTDIR}"/*.vcf 2>/dev/null \
     | sed 's|.*/||; s/\.vcf//' | sort > snippy_samples.txt
 
@@ -575,6 +603,7 @@ rm -f fastq_samples.txt snippy_samples.txt
 
 echo "🎯 All steps completed!"
 echo "Snippy results are in: ${OUTDIR}/"
+
 
 ```
 ##### Step 3: Save and exit nano
@@ -779,7 +808,8 @@ done
 - `OUTDIR="$CURDIR/consensus_sequences"` → Folder for consensus FASTA sequences.  
 - `mkdir -p "$OUTDIR"` → Ensure output directory exists.  
 - `for vcf in "$VCFDIR"/*.vcf; do ... done` → Loop through all filtered VCF files.  
-- `sample=$(basename "$vcf" .vcf)` → Extract sample name.  
+- `sample=$(basename "$vcf" .vT2.fasta 
+cf)` → Extract sample name.  
 - `bgzip -c "$vcf" > "$vcf.gz"` → Compress VCF with bgzip.  
 - `bcftools index "$vcf.gz"` → Index compressed VCF.  
 - `bcftools consensus -f "$CURDIR/H37Rv.fasta" "$vcf.gz" | sed "1s/.*/>$sample/" > "$OUTDIR/${sample}.consensus.fasta"` → Generate consensus FASTA and replace header with sample name.  
