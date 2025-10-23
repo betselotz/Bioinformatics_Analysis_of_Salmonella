@@ -1,27 +1,5 @@
 ## Checking FASTQ
 
-### FASTQ summary
-
-This repository contains scripts and commands to **explore and summarize paired-end FASTQ files** for multiple samples, as well as individual single samples, in a bioinformatically meaningful way.
-
-> ⚠️ Note: We do **not** need to run these scripts for single-end sequence datasets.
-
-</details>
-
-  
-### 1. Peek at the first few reads
-```bash
-zcat raw_data/SRR28821350_1.fastq.gz | head -n 16
-zcat raw_data/SRR28821350_2.fastq.gz | head -n 16
-```
-
-### 2. Count total reads
-For single sample
-```bash
-echo $(( $(zcat raw_data/SRR28821350_1.fastq.gz | wc -l) / 4 ))
-echo $(( $(zcat raw_data/SRR28821350_2.fastq.gz | wc -l) / 4 ))
-```
-
 For batch processing 
 ##### Step 1: Open a new script
 ```bash
